@@ -1,0 +1,66 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Login — Jailbreaking Challenge">
+  <div class="login-page">
+    <header class="site-header">
+      <span class="wordmark">Jailbreaking Challenge</span>
+    </header>
+    <main class="login-main">
+      <div class="login-container">
+        <h1 class="login-heading">Enter the challenge</h1>
+        <p class="login-sub">Ask for the password at the front desk.</p>
+        <div id="login-island"></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    import { createRoot } from 'react-dom/client';
+    import { createElement } from 'react';
+    import LoginForm from '../components/LoginForm.jsx';
+    const root = createRoot(document.getElementById('login-island'));
+    root.render(createElement(LoginForm));
+  </script>
+  <style>
+    .login-page {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .site-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border);
+    }
+    .wordmark {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .login-main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8) var(--space-6);
+    }
+    .login-container {
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-heading {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: var(--space-2);
+    }
+    .login-sub {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin-bottom: var(--space-8);
+    }
+  </style>
+</Layout>

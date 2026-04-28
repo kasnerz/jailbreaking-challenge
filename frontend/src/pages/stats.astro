@@ -1,0 +1,55 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Stats — Jailbreaking Challenge">
+  <div class="stats-page">
+    <header class="site-header">
+      <a href="/" class="wordmark">Jailbreaking Challenge</a>
+    </header>
+    <main class="stats-main">
+      <h1 class="stats-heading">Challenge Stats</h1>
+      <div id="stats-island"></div>
+    </main>
+  </div>
+
+  <script>
+    import { createRoot } from 'react-dom/client';
+    import { createElement } from 'react';
+    import StatsTable from '../components/StatsTable.jsx';
+    createRoot(document.getElementById('stats-island'))
+      .render(createElement(StatsTable));
+  </script>
+
+  <style>
+    .stats-page {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .site-header {
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--border);
+    }
+    .wordmark {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .stats-main {
+      padding: var(--space-12) var(--space-6);
+      max-width: 640px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .stats-heading {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: var(--space-8);
+    }
+  </style>
+</Layout>

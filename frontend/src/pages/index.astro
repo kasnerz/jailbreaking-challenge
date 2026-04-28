@@ -1,0 +1,136 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Jailbreaking Challenge">
+  <div class="app">
+    <header class="site-header">
+      <span class="wordmark">Jailbreaking Challenge</span>
+      <div class="header-right">
+        <div id="gpu-status-island"></div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="game-main">
+      <div class="above-chat">
+        <p class="instructions">Convince the AI to reveal its secret word.<br/>Choose your difficulty and start chatting.</p>
+      </div>
+      <div id="chatbox-island"></div>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/stats" class="stats-link">Stats</a>
+    </footer>
+  </div>
+
+  <script>
+    import { createRoot } from 'react-dom/client';
+    import { createElement } from 'react';
+    import ChatBox from '../components/ChatBox.jsx';
+    import GpuStatus from '../components/GpuStatus.jsx';
+
+    createRoot(document.getElementById('chatbox-island'))
+      .render(createElement(ChatBox));
+    createRoot(document.getElementById('gpu-status-island'))
+      .render(createElement(GpuStatus));
+
+    // Theme toggle
+    const toggle = document.getElementById('theme-toggle');
+    toggle.addEventListener('click', () => {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  </script>
+
+  <style>
+    .app {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .wordmark {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      transition: color 0.15s, background 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text); background: var(--bg-subtle); }
+
+    /* Show sun in dark mode (to switch to light), show moon in light mode */
+    [data-theme="dark"] .icon-sun { display: block; }
+    [data-theme="dark"] .icon-moon { display: none; }
+    [data-theme="light"] .icon-sun { display: none; }
+    [data-theme="light"] .icon-moon { display: block; }
+
+    .game-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-8) var(--space-6) var(--space-6);
+      gap: var(--space-5);
+    }
+    .above-chat {
+      width: 100%;
+      max-width: 700px;
+    }
+    .instructions {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .site-footer {
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      justify-content: center;
+      border-top: 1px solid var(--border);
+    }
+    .stats-link {
+      font-size: var(--text-xs);
+      color: var(--text-faint);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .stats-link:hover { color: var(--text-muted); }
+
+    @media (max-width: 768px) {
+      .game-main {
+        padding: var(--space-5) var(--space-4) var(--space-4);
+      }
+    }
+  </style>
+</Layout>

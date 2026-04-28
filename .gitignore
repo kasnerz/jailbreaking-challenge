@@ -1,0 +1,34 @@
+# Secrets
+config/secrets.yaml
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+.env.*
+!.env.example
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/.astro/
+
+# DB
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+logs/
