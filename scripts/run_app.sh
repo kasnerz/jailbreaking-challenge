@@ -32,7 +32,7 @@ echo "**********************"
 
 export VLLM_BASE_URL="http://127.0.0.1:8777/v1"
 export APP_PASSWORD="hackmeifyoucan"
-export JWT_SECRET="CIUAOsYz12zX9VJMDlF3qsS8mScVUe8i"
+export JWT_SECRET="x1JfjZHeVMvPF7dazpVcbRTVgofGEhje"
 export MODEL_NAME="google/gemma-4-E4B-it"
 export DB_PATH="/lnet/work/people/kasner/projects/jailbreaking/jailbreaking.db"
 

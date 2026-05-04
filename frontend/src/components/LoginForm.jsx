@@ -60,15 +60,15 @@ export default function LoginForm() {
           font-family: var(--font-body);
           font-size: var(--text-base);
           color: var(--text);
-          background: var(--bg-elevated);
-          border: 1px solid var(--border);
+          background: var(--bg-subtle);
+          border: 1px solid var(--border-strong);
           border-radius: var(--radius-sm);
           padding: var(--space-3) var(--space-4);
           width: 100%;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .field-input:hover { border-color: var(--border-strong); }
-        .field-input:focus { border-color: var(--accent); outline: none; }
+        .field-input:hover { border-color: var(--text-faint); }
+        .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); outline: none; }
         .field-input::placeholder { color: var(--text-faint); }
         .field-error {
           font-size: var(--text-sm);
@@ -78,15 +78,15 @@ export default function LoginForm() {
           font-family: var(--font-body);
           font-size: var(--text-base);
           font-weight: 600;
-          color: var(--bg);
-          background: var(--text);
+          color: oklch(1 0 0);
+          background: var(--accent);
           border-radius: var(--radius-sm);
           padding: var(--space-3) var(--space-4);
           min-height: 44px;
           width: 100%;
-          transition: opacity 0.15s;
+          transition: background 0.15s, opacity 0.15s;
         }
-        .submit-btn:hover:not(:disabled) { opacity: 0.85; }
+        .submit-btn:hover:not(:disabled) { background: var(--accent-hover); }
         .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       `}</style>
     </form>

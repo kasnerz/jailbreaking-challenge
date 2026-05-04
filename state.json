@@ -19,11 +19,11 @@
         "state": "RUNNING"
     },
     "app": {
-        "job_id": "6402631",
+        "job_id": "6402653",
         "port": 8642,
-        "log_path": "/lnet/work/people/kasner/projects/jailbreaking/logs/app_6402631.out",
+        "log_path": "/lnet/work/people/kasner/projects/jailbreaking/logs/app_6402653.out",
         "password": "hackmeifyoucan",
         "node": "dll-4gpu5",
-        "state": "RUNNING"
+        "state": "PENDING"
     }
 }

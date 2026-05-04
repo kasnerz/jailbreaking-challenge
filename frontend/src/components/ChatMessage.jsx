@@ -4,9 +4,11 @@ export default function ChatMessage({ role, content, isStreaming, status }) {
   // sends success=true in the done event; we add a visual "Success" badge inline.
 
   return (
-    <div className={`message message--${role}`}>
+    <div className={`message message--${role}${status === 'success' ? ' message--revealed' : ''}`}>
       <div className="message-meta">
-        <span className="message-role">{role === 'user' ? 'You' : 'AI'}</span>
+        <span className={`message-role message-role--${role}`}>
+          {role === 'user' ? 'You' : 'AI'}
+        </span>
         {status === 'success' && (
           <span className="badge badge--success">Secret revealed</span>
         )}
@@ -14,7 +16,7 @@ export default function ChatMessage({ role, content, isStreaming, status }) {
           <span className="badge badge--failure">Not yet</span>
         )}
       </div>
-      <div className={`message-body ${role === 'assistant' ? 'message-body--mono' : ''}`}>
+      <div className="message-body">
         {content}
         {isStreaming && <span className="cursor" aria-hidden="true" />}
       </div>
@@ -23,10 +25,17 @@ export default function ChatMessage({ role, content, isStreaming, status }) {
           display: flex;
           flex-direction: column;
           gap: var(--space-2);
-          padding: var(--space-4) 0;
+          padding: var(--space-4);
+          border-radius: var(--radius-md);
+          margin: var(--space-1) 0;
         }
         .message + .message {
           border-top: 1px solid var(--border);
+        }
+        .message--revealed {
+          background: var(--success-bg);
+          border-top: 1px solid var(--success-border) !important;
+          box-shadow: inset 0 0 0 1px var(--success-border);
         }
         .message-meta {
           display: flex;
@@ -40,8 +49,9 @@ export default function ChatMessage({ role, content, isStreaming, status }) {
           letter-spacing: 0.06em;
           color: var(--text-faint);
         }
-        .message--user .message-role { color: var(--text-muted); }
+        .message-role--user { color: var(--accent); }
         .message-body {
+          font-family: var(--font-body);
           font-size: var(--text-base);
           color: var(--text);
           line-height: 1.65;
