@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { isAuthenticated } from '../lib/auth.js';
+import { getLoginUrl, isAuthenticated } from '../lib/auth.js';
 import { fetchLevels, fetchHealth, streamChat } from '../lib/api.js';
 import LevelPills from './LevelPills.jsx';
 import ChatMessage from './ChatMessage.jsx';
@@ -20,7 +20,7 @@ export default function ChatBox() {
   // Auth guard
   useEffect(() => {
     if (!isAuthenticated()) {
-      window.location.href = '/login';
+      window.location.href = getLoginUrl();
     }
   }, []);
 

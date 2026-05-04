@@ -33,6 +33,23 @@ app = FastAPI(title="Jailbreaking Challenge", docs_url=None, redoc_url=None)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+@app.middleware("http")
+async def strip_configured_root_path(request: Request, call_next):
+    root_path = request.scope.get("root_path") or ""
+    path = request.scope.get("path") or ""
+
+    if root_path and path == root_path:
+        request.scope["path"] = "/"
+        request.scope["raw_path"] = b"/"
+    elif root_path and path.startswith(f"{root_path}/"):
+        stripped_path = path[len(root_path) :]
+        request.scope["path"] = stripped_path or "/"
+        request.scope["raw_path"] = (stripped_path or "/").encode("utf-8")
+
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Restrict in production via nginx

@@ -1,1 +1,29 @@
-{}
+{
+    "config": {
+        "port": 8642,
+        "password": "hackmeifyoucan",
+        "model_id": "google/gemma-4-E4B-it",
+        "gpus": 1,
+        "gpuram": "64G",
+        "mem": "32G",
+        "app_mem": "8G",
+        "base_path": "/nlg/jailbreaking",
+        "jwt_secret": "x1JfjZHeVMvPF7dazpVcbRTVgofGEhje"
+    },
+    "vllm": {
+        "job_id": "6402630",
+        "port": 8777,
+        "log_path": "/lnet/work/people/kasner/projects/jailbreaking/logs/vllm_6402630.out",
+        "model_id": "google/gemma-4-E4B-it",
+        "node": "dll-4gpu5",
+        "state": "RUNNING"
+    },
+    "app": {
+        "job_id": "6402631",
+        "port": 8642,
+        "log_path": "/lnet/work/people/kasner/projects/jailbreaking/logs/app_6402631.out",
+        "password": "hackmeifyoucan",
+        "node": "dll-4gpu5",
+        "state": "RUNNING"
+    }
+}

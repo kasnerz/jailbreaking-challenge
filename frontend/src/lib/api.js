@@ -1,6 +1,22 @@
-import { authHeaders } from './auth.js';
+import { authHeaders, redirectToLogin } from './auth.js';
 
-const BASE = '/api';
+const BASE = import.meta.env.BASE_URL === '/' ? '/api' : import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
+
+async function parseErrorResponse(res, fallbackMessage) {
+    const err = await res.json().catch(() => ({}));
+    return err.detail || fallbackMessage;
+}
+
+async function requireAuthorized(res, fallbackMessage) {
+    if (res.status === 401) {
+        redirectToLogin();
+        throw new Error('Session expired');
+    }
+
+    if (!res.ok) {
+        throw new Error(await parseErrorResponse(res, fallbackMessage));
+    }
+}
 
 export async function login(password) {
     const res = await fetch(`${BASE}/auth/login`, {
@@ -8,10 +24,7 @@ export async function login(password) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Login failed');
-    }
+    await requireAuthorized(res, 'Login failed');
     return res.json();
 }
 
@@ -31,7 +44,7 @@ export async function fetchStats() {
     const res = await fetch(`${BASE}/stats`, {
         headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Failed to fetch stats');
+    await requireAuthorized(res, 'Failed to fetch stats');
     return res.json();
 }
 
@@ -53,10 +66,7 @@ export async function streamChat(level, messages, prompt, onToken) {
         body: JSON.stringify({ level, messages, prompt }),
     });
 
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Chat failed (${res.status})`);
-    }
+    await requireAuthorized(res, `Chat failed (${res.status})`);
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchStats } from '../lib/api.js';
-import { isAuthenticated } from '../lib/auth.js';
+import { getLoginUrl, isAuthenticated } from '../lib/auth.js';
 
 export default function StatsTable() {
   const [stats, setStats] = useState(null);
@@ -8,7 +8,7 @@ export default function StatsTable() {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      window.location.href = '/login';
+      window.location.href = getLoginUrl();
       return;
     }
     fetchStats()

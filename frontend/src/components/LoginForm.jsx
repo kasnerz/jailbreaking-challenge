@@ -15,7 +15,7 @@ export default function LoginForm() {
     try {
       const { token } = await login(password);
       setToken(token);
-      window.location.href = '/';
+      window.location.href = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/?$/, '/');
     } catch (err) {
       setError(err.message || 'Invalid password');
     } finally {
