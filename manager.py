@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import secrets
+import signal
 import string
 import subprocess
 import time
@@ -16,6 +17,11 @@ VLLM_VENV = "/lnet/work/people/kasner/virtualenv/vllm-amd"
 GPU_PARTITIONS = "gpu-troja,gpu-ms,gpu-amd"
 JOB_NODE_WAIT_SECONDS = 120
 JOB_NODE_POLL_SECONDS = 5
+
+
+def load_env():
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    return dotenv_values(env_path)
 
 
 def load_json(path):
@@ -49,6 +55,18 @@ def get_project_venv_path(project_dir):
 
 def run_command(command):
     return subprocess.run(command, capture_output=True, text=True)
+
+
+def is_local_process_active(pid):
+    if not pid:
+        return False
+
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+
+    return True
 
 
 def get_job_status(job_id):
@@ -89,6 +107,14 @@ def sync_split_state(state):
     for key in ["vllm", "app"]:
         job = state.get(key)
         if not job:
+            continue
+
+        if job.get("kind") == "local":
+            if is_local_process_active(job.get("pid")):
+                job["state"] = "RUNNING"
+                job["node"] = "local"
+            else:
+                del state[key]
             continue
 
         job_info = get_job_status(job["job_id"])
@@ -145,6 +171,8 @@ def build_app_script(
     app_mem,
     log_path,
     node,
+    llm_url,
+    llm_api_key,
 ):
     return f"""#!/bin/bash
 #SBATCH -J jailbreak_app
@@ -175,10 +203,11 @@ echo "*** App Setup Info ***"
 echo "NODE: $(hostname)"
 echo "PORT: {port}"
 echo "MODEL: {model_id}"
-echo "VLLM: http://127.0.0.1:{VLLM_PORT}/v1"
+echo "LLM: {llm_url}"
 echo "**********************"
 
-export VLLM_BASE_URL="http://127.0.0.1:{VLLM_PORT}/v1"
+export CHAT_EINFRA_URL="{llm_url}"
+export CHAT_EINFRA_KEY="{llm_api_key}"
 export APP_PASSWORD="{password}"
 export JWT_SECRET="{jwt_secret}"
 export MODEL_NAME="{model_id}"
@@ -188,10 +217,62 @@ uvicorn backend.main:app --host 0.0.0.0 --port {port} --root-path "{base_path}" 
 """
 
 
-def write_and_submit_script(script_name, script_content):
+def build_local_app_script(
+    project_dir,
+    venv_path,
+    port,
+    password,
+    model_id,
+    base_path,
+    jwt_secret,
+    log_path,
+    llm_url,
+    llm_api_key,
+):
+    return f"""#!/bin/bash
+set -euo pipefail
+
+echo "Building frontend..."
+cd {project_dir}/frontend
+npm install
+export BASE_PATH="{base_path}"
+npm run build
+
+echo "Starting backend..."
+cd {project_dir}
+
+if [[ -f {venv_path}/bin/activate ]]; then
+    source {venv_path}/bin/activate
+fi
+
+echo "*** Local App Setup Info ***"
+echo "HOST: 127.0.0.1"
+echo "PORT: {port}"
+echo "MODEL: {model_id}"
+echo "LLM: {llm_url}"
+echo "LOG: {os.path.abspath(log_path)}"
+echo "****************************"
+
+export CHAT_EINFRA_URL="{llm_url}"
+export CHAT_EINFRA_KEY="{llm_api_key}"
+export APP_PASSWORD="{password}"
+export JWT_SECRET="{jwt_secret}"
+export MODEL_NAME="{model_id}"
+export DB_PATH="{project_dir}/jailbreaking.db"
+
+uvicorn backend.main:app --host 127.0.0.1 --port {port} --root-path "{base_path}" --log-level info
+"""
+
+
+def write_script(script_name, script_content):
     script_path = os.path.join(SCRIPT_DIR, script_name)
     with open(script_path, "w") as f:
         f.write(script_content)
+    return script_path
+
+
+def write_and_submit_script(script_name, script_content):
+    script_path = write_script(script_name, script_content)
 
     result = run_command(["sbatch", script_path])
     if result.returncode != 0:
@@ -250,6 +331,8 @@ def start_app_job(state):
         app_mem=config["app_mem"],
         log_path=log_path,
         node=node,
+        llm_url=f"http://127.0.0.1:{VLLM_PORT}/v1",
+        llm_api_key="",
     )
 
     print(f"Submitting app job on node {node} at port {config['port']}")
@@ -257,6 +340,7 @@ def start_app_job(state):
     app_info = get_job_status(job_id)
 
     state["app"] = {
+        "kind": "slurm",
         "job_id": job_id,
         "port": config["port"],
         "log_path": os.path.abspath(log_path.replace("%j", job_id)),
@@ -268,18 +352,79 @@ def start_app_job(state):
     return state
 
 
-def start_job(port, password, model_id, gpus, gpuram, mem, app_mem, base_path):
+def start_local_app(state, llm_url, llm_api_key):
+    config = state["config"]
+    project_dir = get_project_dir()
+    venv_path = get_project_venv_path(project_dir)
+    log_path = os.path.join(LOG_DIR, "app_local.out")
+    script_content = build_local_app_script(
+        project_dir=project_dir,
+        venv_path=venv_path,
+        port=config["port"],
+        password=config["password"],
+        model_id=config["model_id"],
+        base_path=config["base_path"],
+        jwt_secret=config["jwt_secret"],
+        log_path=log_path,
+        llm_url=llm_url,
+        llm_api_key=llm_api_key,
+    )
+    script_path = write_script("run_local_app.sh", script_content)
+
+    with open(log_path, "w") as log_file:
+        process = subprocess.Popen(
+            ["bash", script_path],
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+
+    time.sleep(1)
+    if process.poll() is not None:
+        raise RuntimeError(
+            f"Local app exited immediately. Check the log: {os.path.abspath(log_path)}"
+        )
+
+    state["app"] = {
+        "kind": "local",
+        "pid": process.pid,
+        "port": config["port"],
+        "log_path": os.path.abspath(log_path),
+        "password": config["password"],
+        "node": "local",
+        "state": "RUNNING",
+    }
+    return state
+
+
+def start_job(
+    mode,
+    port,
+    password,
+    model_id,
+    gpus,
+    gpuram,
+    mem,
+    app_mem,
+    base_path,
+    llm_url,
+    llm_api_key,
+):
     state = load_json(STATE_FILE)
 
     state = ensure_split_state(state)
     state = sync_split_state(state)
 
-    if state.get("vllm") and state.get("app"):
-        print("vLLM and app jobs are already running.")
+    active_mode = state.get("config", {}).get("mode")
+    if active_mode and active_mode != mode and (state.get("vllm") or state.get("app")):
+        print(
+            "A different manager mode is already running. Stop tracked processes first."
+        )
         return
 
     if not state["config"]:
         state["config"] = {
+            "mode": mode,
             "port": port,
             "password": password,
             "model_id": model_id,
@@ -292,6 +437,29 @@ def start_job(port, password, model_id, gpus, gpuram, mem, app_mem, base_path):
         }
 
     config = state["config"]
+
+    if config.get("mode") != mode:
+        print("Tracked config uses a different mode. Stop tracked processes first.")
+        return
+
+    if mode == "external":
+        if state.get("app"):
+            print("External app is already running.")
+            return
+
+        try:
+            state = start_local_app(state, llm_url, llm_api_key)
+        except RuntimeError as exc:
+            print(str(exc))
+            save_json(STATE_FILE, state)
+            return
+
+        save_json(STATE_FILE, state)
+        return
+
+    if state.get("vllm") and state.get("app"):
+        print("vLLM and app jobs are already running.")
+        return
 
     if state.get("vllm") and config["model_id"] != model_id:
         print(
@@ -330,15 +498,31 @@ def stop_job():
         return
 
     if state.get("app"):
-        job_id = state["app"]["job_id"]
-        print(f"Canceling app job {job_id}...")
-        subprocess.run(["scancel", str(job_id)])
+        if state["app"].get("kind") == "local":
+            pid = state["app"]["pid"]
+            print(f"Stopping local app process {pid}...")
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        else:
+            job_id = state["app"]["job_id"]
+            print(f"Canceling app job {job_id}...")
+            subprocess.run(["scancel", str(job_id)])
         del state["app"]
 
     if state.get("vllm"):
-        job_id = state["vllm"]["job_id"]
-        print(f"Canceling vLLM job {job_id}...")
-        subprocess.run(["scancel", str(job_id)])
+        if state["vllm"].get("kind") == "local":
+            pid = state["vllm"]["pid"]
+            print(f"Stopping local vLLM process {pid}...")
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        else:
+            job_id = state["vllm"]["job_id"]
+            print(f"Canceling vLLM job {job_id}...")
+            subprocess.run(["scancel", str(job_id)])
         del state["vllm"]
 
     if not state.get("vllm") and not state.get("app"):
@@ -349,10 +533,35 @@ def stop_job():
 
 
 def restart_app():
+    env = load_env()
     state = load_json(STATE_FILE)
 
     state = ensure_split_state(state)
     state = sync_split_state(state)
+
+    if state.get("config", {}).get("mode") == "external":
+        if state.get("app"):
+            pid = state["app"].get("pid")
+            if pid:
+                print(f"Stopping local app process {pid}...")
+                try:
+                    os.killpg(pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            del state["app"]
+
+        llm_url = env.get("CHAT_EINFRA_URL") or env.get("VLLM_BASE_URL")
+        llm_api_key = env.get("CHAT_EINFRA_KEY") or env.get("VLLM_API_KEY", "")
+
+        try:
+            state = start_local_app(state, llm_url, llm_api_key)
+        except RuntimeError as exc:
+            print(str(exc))
+            save_json(STATE_FILE, state)
+            return
+
+        save_json(STATE_FILE, state)
+        return
 
     if not state.get("vllm"):
         print("No tracked vLLM job found. Start the app first.")
@@ -390,9 +599,14 @@ def print_job_block(label, job):
         print(f"{label:<8}: not running")
         return
 
-    print(f"{label:<8}: {job['job_id']}")
+    identifier = job.get("job_id") or job.get("pid") or "unknown"
+    print(f"{label:<8}: {identifier}")
+    if job.get("kind"):
+        print(f"Kind     : {job['kind']}")
     print(f"State    : {job.get('state', 'UNKNOWN')}")
     print(f"Node     : {job.get('node', 'N/A')}")
+    if "pid" in job:
+        print(f"PID      : {job['pid']}")
     if "port" in job:
         print(f"Port     : {job['port']}")
     if "password" in job:
@@ -413,6 +627,10 @@ def status():
         print("No jobs are currently running.")
         return
 
+    if state.get("config", {}).get("mode"):
+        print(f"Mode     : {state['config']['mode']}")
+        print()
+
     if state.get("vllm"):
         print_job_block("vLLM", state["vllm"])
     else:
@@ -425,7 +643,10 @@ def status():
     else:
         print_job_block("App", None)
 
-    if state.get("app") and state["app"].get("node") != "N/A":
+    if state.get("app") and state["app"].get("kind") == "local":
+        port = state["app"]["port"]
+        print(f"\nOpen locally: http://127.0.0.1:{port}")
+    elif state.get("app") and state["app"].get("node") != "N/A":
         port = state["app"]["port"]
         node = state["app"]["node"]
         print("\nTo access locally, set up SSH port forwarding:")
@@ -452,13 +673,22 @@ def show_logs(target):
 
 
 def main():
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    env = dotenv_values(env_path)
+    env = load_env()
 
-    parser = argparse.ArgumentParser(description="Manage Jailbreaking app on Slurm")
+    parser = argparse.ArgumentParser(
+        description="Manage Jailbreaking app locally or on Slurm"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
-    start_p = subparsers.add_parser("start", help="Start vLLM and the app")
+    start_p = subparsers.add_parser(
+        "start", help="Start the app in external or vLLM mode"
+    )
+    start_p.add_argument(
+        "--mode",
+        choices=["external", "vllm"],
+        default=env.get("MANAGER_MODE", "external"),
+        help="Manager mode: external runs locally against an existing OpenAI-compatible API; vllm submits split Slurm jobs.",
+    )
     start_p.add_argument(
         "--port", type=int, default=8642, help="Port to expose the app on"
     )
@@ -472,7 +702,7 @@ def main():
         "--model",
         default=env.get("MODEL_NAME"),
         required=not env.get("MODEL_NAME"),
-        help="HuggingFace model ID (or set MODEL_NAME in .env)",
+        help="Model ID or alias for the configured API (or set MODEL_NAME in .env)",
     )
     start_p.add_argument("--gpus", type=int, default=1, help="Number of GPUs")
     start_p.add_argument(
@@ -510,7 +740,10 @@ def main():
     os.makedirs(SCRIPT_DIR, exist_ok=True)
 
     if args.command == "start":
+        llm_url = env.get("CHAT_EINFRA_URL") or env.get("VLLM_BASE_URL")
+        llm_api_key = env.get("CHAT_EINFRA_KEY") or env.get("VLLM_API_KEY", "")
         start_job(
+            args.mode,
             args.port,
             args.password,
             args.model,
@@ -519,6 +752,8 @@ def main():
             args.mem,
             args.app_mem,
             args.base_path,
+            llm_url,
+            llm_api_key,
         )
     elif args.command == "restart-app":
         restart_app()

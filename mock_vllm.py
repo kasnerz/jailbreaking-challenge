@@ -6,8 +6,9 @@ the Jailbreaking Challenge backend.
 
 Usage:
     python mock_vllm.py
-    # Then set VLLM_BASE_URL=http://localhost:8001/v1 in .env
+    # Then set CHAT_EINFRA_URL=http://localhost:8001/v1 in .env
 """
+
 import asyncio
 import json
 import random
@@ -148,5 +149,5 @@ async def chat_completions(body: ChatRequest):
 
 if __name__ == "__main__":
     print("Starting mock vLLM server on http://localhost:8001")
-    print("Set VLLM_BASE_URL=http://localhost:8001/v1 in your .env")
+    print("Set CHAT_EINFRA_URL=http://localhost:8001/v1 in your .env")
     uvicorn.run(app, host="127.0.0.1", port=8001)

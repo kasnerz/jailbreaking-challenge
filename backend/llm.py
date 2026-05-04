@@ -9,8 +9,8 @@ from .config import settings
 
 def _get_client() -> AsyncOpenAI:
     return AsyncOpenAI(
-        base_url=settings.VLLM_BASE_URL,
-        api_key="none",
+        base_url=settings.CHAT_EINFRA_URL,
+        api_key=settings.CHAT_EINFRA_KEY or "none",
         timeout=60.0,
     )
 
@@ -47,15 +47,15 @@ async def stream_chat(
 
 
 async def health_check() -> bool:
-    """Check if the vLLM endpoint is reachable."""
+    """Check if the configured OpenAI-compatible endpoint is reachable."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            # vLLM exposes /health — strip the /v1 suffix properly
-            base = settings.VLLM_BASE_URL
-            if base.endswith("/v1"):
-                base = base[:-3]
-            base = base.rstrip("/")
-            resp = await client.get(f"{base}/health")
+        headers = {}
+        if settings.CHAT_EINFRA_KEY:
+            headers["Authorization"] = f"Bearer {settings.CHAT_EINFRA_KEY}"
+
+        async with httpx.AsyncClient(timeout=5.0, headers=headers) as client:
+            base = settings.CHAT_EINFRA_URL.rstrip("/")
+            resp = await client.get(f"{base}/models")
             return resp.status_code == 200
     except Exception:
         return False
