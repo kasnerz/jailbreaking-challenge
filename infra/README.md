@@ -156,6 +156,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 | `MANAGER_MODE` | Default mode for `manager.py start` (`external` or `vllm`) |
 | `CHAT_EINFRA_URL` | Base URL of the configured OpenAI-compatible API |
 | `CHAT_EINFRA_KEY` | Optional API key for the configured API |
+| `CHAT_EINFRA_KEY_FILE` | Path to a file holding the API key, e.g. a Docker secret; overrides `CHAT_EINFRA_KEY` |
 | `APP_PASSWORD` | Shared password for all attendees |
 | `JWT_SECRET` | Secret for signing JWTs; if unset, the backend generates one at startup |
 | `MODEL_NAME` | Model name passed to the configured API |

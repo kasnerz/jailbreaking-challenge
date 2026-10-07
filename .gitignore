@@ -1,6 +1,9 @@
 # Secrets
 config/secrets.yaml
 .env
+# Written by manager.py with the API key, password and JWT secret baked in
+state.json
+scripts/run_*.sh
 
 # Python
 __pycache__/
