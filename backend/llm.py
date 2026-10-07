@@ -1,17 +1,17 @@
 import re
 from typing import Any, AsyncGenerator, Dict, List
 
-import httpx
 from openai import AsyncOpenAI
 
 from .config import settings
 
 
-def _get_client() -> AsyncOpenAI:
+def _get_client(timeout: float = 60.0, max_retries: int = 2) -> AsyncOpenAI:
     return AsyncOpenAI(
         base_url=settings.CHAT_EINFRA_URL,
         api_key=settings.CHAT_EINFRA_KEY or "none",
-        timeout=60.0,
+        timeout=timeout,
+        max_retries=max_retries,
     )
 
 
@@ -49,13 +49,9 @@ async def stream_chat(
 async def health_check() -> bool:
     """Check if the configured OpenAI-compatible endpoint is reachable."""
     try:
-        headers = {}
-        if settings.CHAT_EINFRA_KEY:
-            headers["Authorization"] = f"Bearer {settings.CHAT_EINFRA_KEY}"
-
-        async with httpx.AsyncClient(timeout=5.0, headers=headers) as client:
-            base = settings.CHAT_EINFRA_URL.rstrip("/")
-            resp = await client.get(f"{base}/models")
-            return resp.status_code == 200
+        # GET {base_url}/models; raises on connection errors and non-2xx.
+        async with _get_client(timeout=5.0, max_retries=0) as client:
+            await client.models.list()
+        return True
     except Exception:
         return False
